@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "resolve-directives.h"
-
 #include "check-acc-structure.h"
 #include "check-omp-structure.h"
 #include "resolve-names-utils.h"
@@ -454,7 +453,7 @@ private:
   static constexpr Symbol::Flags ompFlagsRequireNewSymbol{
       Symbol::Flag::OmpPrivate, Symbol::Flag::OmpLinear,
       Symbol::Flag::OmpFirstPrivate, Symbol::Flag::OmpLastPrivate,
-      Symbol::Flag::OmpReduction};
+      Symbol::Flag::OmpReduction, Symbol::Flag::OmpCriticalLock};
 
   static constexpr Symbol::Flags ompFlagsRequireMark{
       Symbol::Flag::OmpThreadprivate};
@@ -1327,8 +1326,18 @@ bool OmpAttributeVisitor::Pre(const parser::OpenMPSectionsConstruct &x) {
 }
 
 bool OmpAttributeVisitor::Pre(const parser::OpenMPCriticalConstruct &x) {
-  const auto &criticalDir{std::get<parser::OmpCriticalDirective>(x.t)};
-  PushContext(criticalDir.source, llvm::omp::Directive::OMPD_critical);
+  const auto &beginCriticalDir{std::get<parser::OmpCriticalDirective>(x.t)};
+  const auto &endCriticalDir{std::get<parser::OmpEndCriticalDirective>(x.t)};
+  PushContext(beginCriticalDir.source, llvm::omp::Directive::OMPD_critical);
+  PushContext(endCriticalDir.source, llvm::omp::Directive::OMPD_critical);
+  if (const auto &criticalName{
+          std::get<std::optional<parser::Name>>(beginCriticalDir.t)}) {
+    ResolveOmpName(*criticalName, Symbol::Flag::OmpCriticalLock);
+  }
+  if (const auto &endCriticalName{
+          std::get<std::optional<parser::Name>>(endCriticalDir.t)}) {
+    ResolveOmpName(*endCriticalName, Symbol::Flag::OmpCriticalLock);
+  }
   return true;
 }
 
@@ -1427,23 +1436,25 @@ void OmpAttributeVisitor::Post(const parser::Name &name) {
   } // within OpenMP construct
 }
 
-Symbol *OmpAttributeVisitor::ResolveName(const parser::Name *name) {
-  if (auto *resolvedSymbol{
-          name ? GetContext().scope.FindSymbol(name->source) : nullptr}) {
-    name->symbol = resolvedSymbol;
-    return resolvedSymbol;
-  } else {
-    return nullptr;
-  }
-}
-
 void OmpAttributeVisitor::ResolveOmpName(
     const parser::Name &name, Symbol::Flag ompFlag) {
-  if (ResolveName(&name)) {
-    if (auto *resolvedSymbol{ResolveOmp(name, ompFlag, currScope())}) {
-      if (dataSharingAttributeFlags.test(ompFlag)) {
-        AddToContextObjectWithDSA(*resolvedSymbol, ompFlag);
-      }
+  if (&name) {
+    if (auto *resolvedSymbol{GetContext().scope.FindSymbol(name.source)}) {
+      Resolve(name, resolvedSymbol);
+    } else if (ompFlagsRequireNewSymbol.test(ompFlag)) {
+      // Create a new symbol.
+      const auto pair{GetContext().scope.try_emplace(
+          name.source, Attrs{}, ObjectEntityDetails{})};
+      CHECK(pair.second);
+      name.symbol = &pair.first->second.get();
+    } else {
+      DIE("OpenMP Name resolution failed");
+    }
+  }
+
+  if (auto *resolvedSymbol{ResolveOmp(name, ompFlag, currScope())}) {
+    if (dataSharingAttributeFlags.test(ompFlag)) {
+      AddToContextObjectWithDSA(*resolvedSymbol, ompFlag);
     }
   }
 }

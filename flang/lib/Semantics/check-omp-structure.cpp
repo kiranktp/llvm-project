@@ -774,14 +774,41 @@ void OmpStructureChecker::Leave(const parser::OpenMPCancelConstruct &) {
   dirContext_.pop_back();
 }
 
-void OmpStructureChecker::Enter(const parser::OpenMPCriticalConstruct &x) {
-  const auto &dir{std::get<parser::OmpCriticalDirective>(x.t)};
-  PushContextAndClauseSets(dir.source, llvm::omp::Directive::OMPD_critical);
-  const auto &block{std::get<parser::Block>(x.t)};
-  CheckNoBranching(block, llvm::omp::Directive::OMPD_critical, dir.source);
+// TODO: Change it to a more better version without raw string comparision
+// once the module files are present.
+static bool IsHintExprAs(
+    const parser::Expr &expr, const std::string &expectedString) {
+  return (expr.source.ToString() != expectedString) ? false : true;
 }
 
-void OmpStructureChecker::Leave(const parser::OpenMPCriticalConstruct &) {
+void OmpStructureChecker::Enter(const parser::OpenMPCriticalConstruct &x) {
+  const auto &beginCriticalDir{std::get<parser::OmpCriticalDirective>(x.t)};
+  PushContextAndClauseSets(
+      beginCriticalDir.source, llvm::omp::Directive::OMPD_critical);
+  const auto &endCriticalDir{std::get<parser::OmpEndCriticalDirective>(x.t)};
+  PushContextAndClauseSets(
+      endCriticalDir.source, llvm::omp::Directive::OMPD_critical);
+  CheckNameMatching<parser::OmpCriticalDirective,
+      parser::OmpEndCriticalDirective>(beginCriticalDir, endCriticalDir);
+}
+
+void OmpStructureChecker::Leave(const parser::OpenMPCriticalConstruct &x) {
+  // [OMP-5.0][2.17.1] Unless the effect is as if hint(omp_sync_hint_none)
+  // was specified, the critical construct must specify a name
+  if (auto *clause{FindClause(llvm::omp::Clause::OMPC_hint)}) {
+    const auto &hintClause{std::get<parser::OmpClause::Hint>(clause->u)};
+    const parser::Expr &expr{hintClause.v.thing.value()};
+    if (!IsHintExprAs(expr, "omp_sync_hint_none")) {
+      const auto &beginCriticalDir{std::get<parser::OmpCriticalDirective>(x.t)};
+      const auto &criticalName{
+          std::get<std::optional<parser::Name>>(beginCriticalDir.t)};
+      if (!criticalName) {
+        context_.Say(beginCriticalDir.source,
+            "CRITICAL construct must specify a name expect unless the effect"
+            " is equivalent to specifying a HINT(omp_sync_hint_none)"_err_en_US);
+      }
+    }
+  }
   dirContext_.pop_back();
 }
 

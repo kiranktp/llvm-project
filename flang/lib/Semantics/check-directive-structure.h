@@ -282,6 +282,12 @@ protected:
       SayNotMatching(beginDir.source, endDir.source);
     }
   }
+
+  // Checks for missing or mismatching names on OpenMP/OpenACC directives
+  // of two different types.
+  template <typename T1, typename T2>
+  void CheckNameMatching(const T1 &, const T2 &);
+
   // Check illegal branching out of `Parser::Block` for `Parser::Name` based
   // nodes (example `Parser::ExitStmt`)
   void CheckNoBranching(const parser::Block &block, D directive,
@@ -322,6 +328,44 @@ protected:
   std::string ClauseSetToString(const common::EnumSet<C, ClauseEnumSize> set);
   int simdNest_{0};
 };
+
+template <typename D, typename C, typename PC, std::size_t ClauseEnumSize>
+template <typename T1, typename T2>
+void DirectiveStructureChecker<D, C, PC, ClauseEnumSize>::CheckNameMatching(
+    const T1 &beginDir, const T2 &endDir) {
+  const auto &directiveName{std::get<parser::Verbatim>(beginDir.t)};
+  const auto &upperCaseDirName{
+      parser::ToUpperCaseLetters(directiveName.source.ToString())};
+  const auto &beginDirName{std::get<std::optional<parser::Name>>(beginDir.t)};
+  const auto &endDirName{std::get<std::optional<parser::Name>>(endDir.t)};
+
+  if (beginDirName) {
+    if (endDirName) {
+      // Start and end directive names mismatch.
+      if (beginDirName->source != endDirName->source) {
+        context_
+            .Say(endDirName->source,
+                parser::MessageFormattedText{
+                    "%s directive name mismatch"_err_en_US, upperCaseDirName})
+            .Attach(beginDirName->source, "should be"_en_US);
+      }
+    } else { // Missing end directive name
+      context_
+          .Say(endDir.source,
+              parser::MessageFormattedText{
+                  "%s directive name required but missing"_err_en_US,
+                  upperCaseDirName})
+          .Attach(beginDirName->source, "should be"_en_US);
+    }
+  } else if (endDirName) { // Missing start directive name
+    context_
+        .Say(endDirName->source,
+            parser::MessageFormattedText{
+                "%s directive name unexpected"_err_en_US, upperCaseDirName})
+        .Attach(
+            beginDir.source, "unnamed %s directive"_en_US, upperCaseDirName);
+  }
+}
 
 template <typename D, typename C, typename PC, std::size_t ClauseEnumSize>
 void DirectiveStructureChecker<D, C, PC, ClauseEnumSize>::CheckNoBranching(

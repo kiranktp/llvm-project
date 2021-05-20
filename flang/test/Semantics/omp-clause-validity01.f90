@@ -500,9 +500,9 @@ use omp_lib
 
 ! 2.13.2 critical Construct
 
-  ! !$omp critical (first)
+  !$omp critical (first)
   a = 3.14
-  ! !$omp end critical (first)
+  !$omp end critical (first)
 
 ! 2.9.1 task-clause -> if-clause |
 !                      final-clause |
