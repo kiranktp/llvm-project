@@ -23,6 +23,19 @@ namespace Fortran::parser {
 constexpr auto startOmpLine = skipStuffBeforeStatement >> "!$OMP "_sptok;
 constexpr auto endOmpLine = space >> endOfLine;
 
+// 2.1.6 ITERATOR(iterators-definition)
+//        iterators-definition -> iterator-specifier [, iterators-definition ]
+//        iterator-specifier -> [ iterator-type ] identifier =
+//                                     range-specification
+TYPE_PARSER(sourced(construct<OmpIteratorSpecifier>(
+    maybe(integerTypeSpec / "::"), ompLoopBounds(scalarIntExpr))))
+
+TYPE_PARSER(construct<OmpIteratorSpecifierList>(
+    many(maybe(","_tok) >> Parser<OmpIteratorSpecifier>{})))
+
+TYPE_PARSER(sourced(construct<OmpIterator>(verbatim("ITERATOR"_tok),
+    parenthesized(Parser<OmpIteratorSpecifierList>{}))))
+
 // OpenMP Clauses
 // 2.15.3.1 DEFAULT (PRIVATE | FIRSTPRIVATE | SHARED | NONE)
 TYPE_PARSER(construct<OmpDefaultClause>(
@@ -173,7 +186,12 @@ TYPE_PARSER(construct<OmpAllocateClause>(
         ":"),
     Parser<OmpObjectList>{}))
 
-// 2.13.9 DEPEND (SOURCE | SINK : vec | (IN | OUT | INOUT) : list
+// 2.17.11 DEPEND (source-dependence | sink-dependence | other-dependence)
+//          source-dependence -> SOURCE
+//          sink-dependence   -> SINK : vec
+//          other-dependence  -> dependence-modifier dependence-type : list
+//           dependence-modifier   -> [ITERATOR(iterators-definition), ]
+//           dependence-type   -> IN | OUT | INOUT | MUTEXINOUTSET | DEPOBJ
 TYPE_PARSER(construct<OmpDependSinkVecLength>(
     Parser<DefinedOperator>{}, scalarIntConstantExpr))
 
@@ -182,16 +200,20 @@ TYPE_PARSER(
 
 TYPE_PARSER(
     construct<OmpDependenceType>("IN"_id >> pure(OmpDependenceType::Type::In) ||
+        "OUT" >> pure(OmpDependenceType::Type::Out) ||
         "INOUT" >> pure(OmpDependenceType::Type::Inout) ||
-        "OUT" >> pure(OmpDependenceType::Type::Out)))
+        "MUTEXINOUTSET" >> pure(OmpDependenceType::Type::Mutexinoutset) ||
+        "DEPOBJ" >> pure(OmpDependenceType::Type::Depobj)))
 
 TYPE_CONTEXT_PARSER("Omp Depend clause"_en_US,
     construct<OmpDependClause>(construct<OmpDependClause::Sink>(
         "SINK :" >> nonemptyList(Parser<OmpDependSinkVec>{}))) ||
         construct<OmpDependClause>(
             construct<OmpDependClause::Source>("SOURCE"_tok)) ||
-        construct<OmpDependClause>(construct<OmpDependClause::InOut>(
-            Parser<OmpDependenceType>{}, ":" >> nonemptyList(designator))))
+        sourced(construct<OmpDependClause>(
+            construct<OmpDependClause::IterDepTypeList>(maybe(Parser<OmpIterator>{}),
+                maybe(","_tok) >> Parser<OmpDependenceType>{},
+                ":" >> nonemptyList(designator)))))
 
 // 2.15.3.7 LINEAR (linear-list: linear-step)
 //          linear-list -> list | modifier(list)

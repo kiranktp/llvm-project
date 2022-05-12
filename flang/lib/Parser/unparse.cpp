@@ -2028,6 +2028,18 @@ public:
   }
 
   // OpenMP Clauses & Directives
+  void Unparse(const OmpIteratorSpecifier &x) {
+    Walk(std::get<std::optional<IntegerTypeSpec>>(x.t), "::");
+    const auto &bounds{std::get<OmpIteratorSpecifier::Bounds>(x.t)};
+    Walk(bounds.name), Put('=');
+    Walk(bounds.lower), Put(':'), Walk(bounds.upper), Walk(":", bounds.step);
+  }
+  void Unparse(const OmpIteratorSpecifierList &x) { Walk(" ", x.v, ", "); }
+  void Unparse(const OmpIterator &x) {
+    Word("ITERATOR(");
+    Walk(std::get<OmpIteratorSpecifierList>(x.t));
+    Put(")");
+  }
   void Unparse(const OmpObject &x) {
     common::visit(common::visitors{
                       [&](const Designator &y) { Walk(y); },
@@ -2122,8 +2134,9 @@ public:
     Walk(std::get<Name>(x.t));
     Walk(std::get<std::optional<OmpDependSinkVecLength>>(x.t));
   }
-  void Unparse(const OmpDependClause::InOut &x) {
+  void Unparse(const OmpDependClause::IterDepTypeList &x) {
     Put("(");
+    Walk(std::get<std::optional<OmpIterator>>(x.t), ", ");
     Walk(std::get<OmpDependenceType>(x.t));
     Put(":");
     Walk(std::get<std::list<Designator>>(x.t), ",");
@@ -2142,7 +2155,7 @@ public:
               Put(")");
               return false;
             },
-            [&](const OmpDependClause::InOut &) { return true; },
+            [&](const OmpDependClause::IterDepTypeList &) { return true; },
         },
         x.u);
   }

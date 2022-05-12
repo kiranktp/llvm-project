@@ -101,5 +101,9 @@ template <typename PA> inline constexpr auto loopBounds(const PA &p) {
   return construct<LoopBounds<DoVariable, typename PA::resultType>>(
       doVariable / "=", p / ",", p, maybe("," >> p));
 }
+template <typename PA> inline constexpr auto ompLoopBounds(const PA &p) {
+  return construct<LoopBounds<DoVariable, typename PA::resultType>>(
+      doVariable / "=", p / ":", p, maybe(":" >> p));
+}
 } // namespace Fortran::parser
 #endif

@@ -531,6 +531,22 @@ use omp_lib
   a = 3.14
   !$omp end task
 
+  !$omp task depend(iterator( it=1_4:100:2), in:arrayA(it))
+  a = 3.14
+  !$omp end task
+
+  !$omp task depend(iterator(integer :: it=1_4:100:2), in:arrayA(it))
+  a = 3.14
+  !$omp end task
+
+  !$omp task depend(in: b) depend(mutexinoutset: c)
+  a = 3.14
+  !$omp end task
+
+  !$omp task depend(depobj: obj)
+  a = 3.14
+  !$omp end task
+
 ! 2.9.3 taskloop-simd-clause -> taskloop-clause |
 !                               simd-clause
 

@@ -2790,8 +2790,8 @@ void OmpStructureChecker::Enter(const parser::OmpClause::Device &x) {
 
 void OmpStructureChecker::Enter(const parser::OmpClause::Depend &x) {
   CheckAllowed(llvm::omp::Clause::OMPC_depend);
-  if (const auto *inOut{std::get_if<parser::OmpDependClause::InOut>(&x.v.u)}) {
-    const auto &designators{std::get<std::list<parser::Designator>>(inOut->t)};
+  if (const auto *iterDepTypeList{std::get_if<parser::OmpDependClause::IterDepTypeList>(&x.v.u)}) {
+    const auto &designators{std::get<std::list<parser::Designator>>(iterDepTypeList->t)};
     for (const auto &ele : designators) {
       if (const auto *dataRef{std::get_if<parser::DataRef>(&ele.u)}) {
         CheckDependList(*dataRef);

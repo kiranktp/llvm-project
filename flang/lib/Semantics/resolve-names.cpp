@@ -1403,6 +1403,9 @@ public:
     AddOmpSourceRange(x.source);
     return true;
   }
+  bool Pre(const parser::OmpIteratorSpecifier &);
+  bool Pre(const parser::OmpDependClause &);
+  void Post(const parser::OmpDependClause &);
   bool Pre(const parser::OpenMPBlockConstruct &);
   void Post(const parser::OpenMPBlockConstruct &);
   bool Pre(const parser::OmpBeginBlockDirective &x) {
@@ -8851,6 +8854,34 @@ private:
   ResolveNamesVisitor &resolver_;
   bool pushedScope_{false};
 };
+
+bool OmpVisitor::Pre(const parser::OmpIteratorSpecifier &x) {
+  auto &type{std::get<std::optional<parser::IntegerTypeSpec>>(x.t)};
+  auto &bounds{std::get<parser::OmpIteratorSpecifier::Bounds>(x.t)};
+  DeclareStatementEntity(bounds.name, type);
+  Walk(bounds);
+  return false;
+}
+
+bool OmpVisitor::Pre(const parser::OmpDependClause &x) {
+  messageHandler().set_currStmtSource(x.source);
+  std::visit(
+      common::visitors{
+          [&](const parser::OmpDependClause::Source &) {},
+          [&](const parser::OmpDependClause::Sink &) {},
+          [&](const parser::OmpDependClause::IterDepTypeList &y) {
+            PushScope(Scope::Kind::OmpIterators, nullptr);
+            Walk(y);
+            PopScope();
+          },
+      },
+      x.u);
+  return false;
+}
+
+void OmpVisitor::Post(const parser::OmpDependClause &) {
+  messageHandler().set_currStmtSource(std::nullopt);
+}
 
 // Perform checks and completions that need to happen after all of
 // the specification parts but before any of the execution parts.

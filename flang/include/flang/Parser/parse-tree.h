@@ -3383,6 +3383,27 @@ WRAPPER_CLASS(PauseStmt, std::optional<StopCode>);
 
 // Parse tree nodes for OpenMP 4.5 directives and clauses
 
+// 2.1.6 Iterators [OpenMP 5.0]
+// iterators-specifier -> [ iterator-type ] identifier = range-specification
+// iterator-type -> integer type
+// range-specification -> begin:end[:step]
+struct OmpIteratorSpecifier {
+  TUPLE_CLASS_BOILERPLATE(OmpIteratorSpecifier);
+  CharBlock source;
+  using Bounds = LoopBounds<DoVariable, ScalarIntExpr>;
+  std::tuple<std::optional<IntegerTypeSpec>, Bounds> t;
+};
+
+WRAPPER_CLASS(OmpIteratorSpecifierList, std::list<OmpIteratorSpecifier>);
+
+// 2.1.6 iterators -> iterator(iterators-definition)
+// iterators-definition -> iterator-specifier [, iterators-definition ]
+struct OmpIterator {
+  TUPLE_CLASS_BOILERPLATE(OmpIterator);
+  CharBlock source;
+  std::tuple<Verbatim, OmpIteratorSpecifierList> t;
+};
+
 // 2.5 proc-bind-clause -> PROC_BIND (MASTER | CLOSE | SPREAD)
 struct OmpProcBindClause {
   ENUM_CLASS(Type, Close, Master, Spread, Primary)
@@ -3564,35 +3585,43 @@ struct OmpAllocateClause {
   std::tuple<std::optional<AllocateModifier>, OmpObjectList> t;
 };
 
-// 2.13.9 depend-vec-length -> +/- non-negative-constant
+// 2.17.11 Depend Clause [OpenMP 5.0]
+// 2.17.11 depend-vec-length -> +/- non-negative-constant
 struct OmpDependSinkVecLength {
   TUPLE_CLASS_BOILERPLATE(OmpDependSinkVecLength);
   std::tuple<DefinedOperator, ScalarIntConstantExpr> t;
 };
 
-// 2.13.9 depend-vec -> iterator [+/- depend-vec-length],...,iterator[...]
+// 2.17.11 depend-vec -> iterator [+/- depend-vec-length],...,iterator[...]
 struct OmpDependSinkVec {
   TUPLE_CLASS_BOILERPLATE(OmpDependSinkVec);
   std::tuple<Name, std::optional<OmpDependSinkVecLength>> t;
 };
 
-// 2.13.9 depend-type -> IN | OUT | INOUT | SOURCE | SINK
+// 2.17.11 dependence-type -> IN | OUT | INOUT | MUTEXINOUTSET | DEPOBJ
 struct OmpDependenceType {
-  ENUM_CLASS(Type, In, Out, Inout, Source, Sink)
+  ENUM_CLASS(Type, In, Out, Inout, Mutexinoutset, Depobj)
   WRAPPER_CLASS_BOILERPLATE(OmpDependenceType, Type);
 };
 
-// 2.13.9 depend-clause -> DEPEND (((IN | OUT | INOUT) : variable-name-list) |
-//                                 SOURCE | SINK : depend-vec)
+// 2.17.11 depend-clause -> DEPEND (([ITERATOR(iterators-definition),]
+//                                   (IN | OUT | INOUT |
+//                                    MUTEXINOUTSET | DEPOBJ) :
+//                                   variable-name-list) |
+//                                  SOURCE |
+//                                  SINK : depend-vec)
 struct OmpDependClause {
   UNION_CLASS_BOILERPLATE(OmpDependClause);
   EMPTY_CLASS(Source);
   WRAPPER_CLASS(Sink, std::list<OmpDependSinkVec>);
-  struct InOut {
-    TUPLE_CLASS_BOILERPLATE(InOut);
-    std::tuple<OmpDependenceType, std::list<Designator>> t;
+  struct IterDepTypeList {
+    TUPLE_CLASS_BOILERPLATE(IterDepTypeList);
+    std::tuple<std::optional<OmpIterator>, OmpDependenceType,
+        std::list<Designator>>
+        t;
   };
-  std::variant<Source, Sink, InOut> u;
+  CharBlock source;
+  std::variant<Source, Sink, IterDepTypeList> u;
 };
 
 // OMP 5.0 2.4 atomic-default-mem-order-clause ->
