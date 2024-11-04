@@ -3709,6 +3709,27 @@ struct OmpScheduleClause {
       t;
 };
 
+// OpenMP 5.2
+// 15.9.6 doacross Clause
+// sink-vec-length -> +/- non-negative-constant
+struct OmpDoacrossSinkVecLength {
+  TUPLE_CLASS_BOILERPLATE(OmpDoacrossSinkVecLength);
+  std::tuple<DefinedOperator, ScalarIntConstantExpr> t;
+};
+
+// sink-vec -> iterator [+/- sink-vec-length],...,iterator[...]
+struct OmpDoacrossSinkVec {
+  TUPLE_CLASS_BOILERPLATE(OmpDoacrossSinkVec);
+  std::tuple<Name, std::optional<OmpDoacrossSinkVecLength>> t;
+};
+struct OmpDoacrossClause {
+  UNION_CLASS_BOILERPLATE(OmpDoacrossClause);
+  WRAPPER_CLASS(DoacrossSource, std::list<OmpDoacrossSinkVec>);
+  WRAPPER_CLASS(DoacrossSink, std::list<OmpDoacrossSinkVec>);
+  CharBlock source;
+  std::variant<DoacrossSource, DoacrossSink> u;
+};
+
 // OMP 5.2 12.6.2 num_tasks-clause -> num_tasks ([prescriptiveness :] value)
 struct OmpNumTasksClause {
   TUPLE_CLASS_BOILERPLATE(OmpNumTasksClause);

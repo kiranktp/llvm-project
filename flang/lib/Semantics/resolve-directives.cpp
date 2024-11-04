@@ -550,6 +550,25 @@ public:
     ResolveName(&name);
   }
 
+  bool Pre(const parser::OmpDoacrossClause &x) {
+    if (const auto *doacrossSink{
+            std::get_if<parser::OmpDoacrossClause::DoacrossSink>(&x.u)}) {
+      const auto &doacrossSinkVec{doacrossSink->v};
+      for (const auto &doacrossSinkElement : doacrossSinkVec) {
+        const auto &name{std::get<parser::Name>(doacrossSinkElement.t)};
+        ResolveName(&name);
+      }
+    } else if (const auto *doacrossSource{
+            std::get_if<parser::OmpDoacrossClause::DoacrossSource>(&x.u)}) {
+      const auto &doacrossSourceVec{doacrossSource->v};
+      for (const auto &doacrossSourceElement : doacrossSourceVec) {
+        const auto &name{std::get<parser::Name>(doacrossSourceElement.t)};
+        ResolveName(&name);
+      }
+    }
+    return false;
+  }
+
   bool Pre(const parser::OmpClause::UseDevicePtr &x) {
     ResolveOmpObjectList(x.v, Symbol::Flag::OmpUseDevicePtr);
     return false;

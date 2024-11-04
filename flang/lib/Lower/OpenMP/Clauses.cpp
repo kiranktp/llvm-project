@@ -667,9 +667,56 @@ DistSchedule make(const parser::OmpClause::DistSchedule &inp,
 
 Doacross make(const parser::OmpClause::Doacross &inp,
               semantics::SemanticsContext &semaCtx) {
-  // inp -> empty
-  llvm_unreachable("Empty: doacross");
+  // inp.v -> parser::OmpDependClause
+  using wrapped = parser::OmpDoacrossClause;
+  using Variant = decltype(Doacross::u);
+  // Iteration is the equivalent of parser::OmpDependSinkVec
+  using Iteration = Doacross::Vector::value_type; // LoopIterationT
+
+  return Doacross{Fortran::common::visit( //
+      common::visitors{
+          // Doacross
+          [&](const wrapped::DoacrossSource &s) -> Variant {
+            using VecLength = parser::OmpDoacrossSinkVecLength;
+            auto convert2 = [&](const parser::OmpDoacrossSinkVec &v) {
+              auto &t0 = std::get<parser::Name>(v.t);
+              auto &t1 = std::get<std::optional<VecLength>>(v.t);
+
+              auto convert3 = [&](const VecLength &u) {
+                auto &s0 = std::get<parser::DefinedOperator>(u.t);
+                auto &s1 = std::get<parser::ScalarIntConstantExpr>(u.t);
+                return Iteration::Distance{
+                    {makeDefinedOperator(s0, semaCtx), makeExpr(s1, semaCtx)}};
+              };
+              return Iteration{
+                  {makeObject(t0, semaCtx), maybeApply(convert3, t1)}};
+            };
+            return Doacross{{/*DependenceType=*/Doacross::DependenceType::Source,
+                             /*Vector=*/makeList(s.v, convert2)}};
+          },
+          // Doacross
+          [&](const wrapped::DoacrossSink &s) -> Variant {
+            using VecLength = parser::OmpDoacrossSinkVecLength;
+            auto convert2 = [&](const parser::OmpDoacrossSinkVec &v) {
+              auto &t0 = std::get<parser::Name>(v.t);
+              auto &t1 = std::get<std::optional<VecLength>>(v.t);
+
+              auto convert3 = [&](const VecLength &u) {
+                auto &s0 = std::get<parser::DefinedOperator>(u.t);
+                auto &s1 = std::get<parser::ScalarIntConstantExpr>(u.t);
+                return Iteration::Distance{
+                    {makeDefinedOperator(s0, semaCtx), makeExpr(s1, semaCtx)}};
+              };
+              return Iteration{
+                  {makeObject(t0, semaCtx), maybeApply(convert3, t1)}};
+            };
+            return Doacross{{/*DependenceType=*/Doacross::DependenceType::Sink,
+                             /*Vector=*/makeList(s.v, convert2)}};
+          },
+      },
+      inp.v.u)};
 }
+
 
 // DynamicAllocators: empty
 

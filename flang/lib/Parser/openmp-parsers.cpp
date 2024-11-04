@@ -358,6 +358,20 @@ TYPE_PARSER(construct<OmpAllocateClause>(
         ":"),
     Parser<OmpObjectList>{}))
 
+// OpenMP 5.2
+// 15.9.6 doacross Clause (SOURCE | SINK : vec)
+TYPE_PARSER(construct<OmpDoacrossSinkVecLength>(
+    Parser<DefinedOperator>{}, scalarIntConstantExpr))
+
+TYPE_PARSER(
+    construct<OmpDoacrossSinkVec>(name, maybe(Parser<OmpDoacrossSinkVecLength>{})))
+
+TYPE_CONTEXT_PARSER("Omp Doacross clause"_en_US,
+    sourced(construct<OmpDoacrossClause>(construct<OmpDoacrossClause::DoacrossSink>(
+        "SINK :" >> nonemptyList(Parser<OmpDoacrossSinkVec>{}))) ||
+        construct<OmpDoacrossClause>(construct<OmpDoacrossClause::DoacrossSource>(
+        "SOURCE : ">> nonemptyList(Parser<OmpDoacrossSinkVec>{})))))
+
 // 2.13.9 DEPEND (SOURCE | SINK : vec | (IN | OUT | INOUT) : list
 TYPE_PARSER(construct<OmpDependSinkVecLength>(
     Parser<DefinedOperator>{}, scalarIntConstantExpr))
@@ -461,6 +475,8 @@ TYPE_PARSER(
     "DIST_SCHEDULE" >>
         construct<OmpClause>(construct<OmpClause::DistSchedule>(
             parenthesized("STATIC" >> maybe("," >> scalarIntExpr)))) ||
+    "DOACROSS" >> construct<OmpClause>(construct<OmpClause::Doacross>(
+                    parenthesized(Parser<OmpDoacrossClause>{}))) ||
     "DYNAMIC_ALLOCATORS" >>
         construct<OmpClause>(construct<OmpClause::DynamicAllocators>()) ||
     "ENTER" >> construct<OmpClause>(construct<OmpClause::Enter>(

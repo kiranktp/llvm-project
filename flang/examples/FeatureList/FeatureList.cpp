@@ -475,6 +475,8 @@ public:
   READ_FEATURE(OmpDependClause::Source)
   READ_FEATURE(OmpTaskDependenceType)
   READ_FEATURE(OmpTaskDependenceType::Type)
+  READ_FEATURE(OmpDoacrossSinkVec)
+  READ_FEATURE(OmpDoacrossSinkVecLength)
   READ_FEATURE(OmpDependSinkVec)
   READ_FEATURE(OmpDependSinkVecLength)
   READ_FEATURE(OmpEndAllocators)

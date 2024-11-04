@@ -1442,6 +1442,8 @@ public:
     AddOmpSourceRange(x.source);
     return true;
   }
+  bool Pre(const parser::OmpDoacrossClause &);
+  void Post(const parser::OmpDoacrossClause &);
   bool Pre(const parser::OpenMPBlockConstruct &);
   void Post(const parser::OpenMPBlockConstruct &);
   bool Pre(const parser::OmpBeginBlockDirective &x) {
@@ -1583,6 +1585,21 @@ bool OmpVisitor::NeedsScope(const parser::OmpClause &x) {
 void OmpVisitor::AddOmpSourceRange(const parser::CharBlock &source) {
   messageHandler().set_currStmtSource(source);
   currScope().AddSourceRange(source);
+}
+
+bool OmpVisitor::Pre(const parser::OmpDoacrossClause &x) {
+  messageHandler().set_currStmtSource(x.source);
+  std::visit(
+      common::visitors{
+          [&](const parser::OmpDoacrossClause::DoacrossSource &) {},
+          [&](const parser::OmpDoacrossClause::DoacrossSink &) {},
+      },
+      x.u);
+  return false;
+}
+
+void OmpVisitor::Post(const parser::OmpDoacrossClause &x) {
+  messageHandler().set_currStmtSource(std::nullopt);
 }
 
 bool OmpVisitor::Pre(const parser::OpenMPBlockConstruct &x) {

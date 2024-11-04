@@ -2206,6 +2206,32 @@ public:
         std::get<std::optional<OmpNumTasksClause::Prescriptiveness>>(x.t), ":");
     Walk(std::get<ScalarIntExpr>(x.t));
   }
+  void Unparse(const OmpDoacrossSinkVecLength &x) {
+    Walk(std::get<DefinedOperator>(x.t));
+    Walk(std::get<ScalarIntConstantExpr>(x.t));
+  }
+  void Unparse(const OmpDoacrossSinkVec &x) {
+    Walk(std::get<Name>(x.t));
+    Walk(std::get<std::optional<OmpDoacrossSinkVecLength>>(x.t));
+  }
+  bool Pre(const OmpDoacrossClause &x) {
+    return common::visit(
+        common::visitors{
+            [&](const OmpDoacrossClause::DoacrossSource &y) {
+              Word("SOURCE:");
+              Walk(y.v);
+              Put(")");
+              return false;
+            },
+            [&](const OmpDoacrossClause::DoacrossSink &y) {
+              Word("SINK:");
+              Walk(y.v);
+              Put(")");
+              return false;
+            },
+        },
+        x.u);
+  }
   void Unparse(const OmpDependSinkVecLength &x) {
     Walk(std::get<DefinedOperator>(x.t));
     Walk(std::get<ScalarIntConstantExpr>(x.t));
