@@ -4707,10 +4707,12 @@ def LoopHintDocs : Documentation {
   let Content = [{
 The ``#pragma clang loop`` directive allows loop optimization hints to be
 specified for the subsequent loop. The directive allows pipelining to be
-disabled, or vectorization, vector predication, interleaving, and unrolling to
-be enabled or disabled. Vector width, vector predication, interleave count,
-unrolling count, and the initiation interval for pipelining can be explicitly
-specified. See `language extensions
+disabled, vector dependencies to be ignored, or vectorization (with
+possibility to override efficiency heuristics of the vectorizer), vector
+predication, interleaving, and unrolling to be enabled or disabled. Vector
+width, vector predication, interleave count,unrolling count, and the
+initiation interval for pipelining can be explicitly specified.
+See `language extensions
 <http://clang.llvm.org/docs/LanguageExtensions.html#extensions-for-loop-hint-optimizations>`_
 for details.
   }];

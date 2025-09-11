@@ -5453,9 +5453,9 @@ Extensions for loop hint optimizations
 
 The ``#pragma clang loop`` directive is used to specify hints for optimizing the
 subsequent for, while, do-while, or c++11 range-based for loop. The directive
-provides options for vectorization, interleaving, predication, unrolling and
-distribution. Loop hints can be specified before any loop and will be ignored if
-the optimization is not safe to apply.
+provides options for vectorization, interleaving, predication, ignoring vector
+dependencies, unrolling and distribution. Loop hints can be specified before any
+loop and will be ignored if the optimization is not safe to apply.
 
 There are loop hints that control transformations (e.g. vectorization, loop
 unrolling) and there are loop hints that set transformation options (e.g.
@@ -5533,6 +5533,23 @@ This predicates (masks) all instructions in the loop, which allows the scalar
 remainder loop (the tail) to be folded into the main vectorized loop. This
 might be more efficient when vector predication is efficiently supported by the
 target platform.
+
+Ignore Vector Dependencies in Loop
+----------------------------------
+Dependencies of a loop which cannot be verified by the compiler will inhibit
+loop vectorization. These unknown dependencies can be ignored by using
+``ivdep(enable)``.
+
+.. code-block:: c++
+
+  #pragma clang loop ivdep(enable)
+  for(...) {
+    ...
+  }
+
+This informs the vectorizer that dependencies that have not been determined to
+be safe or unsafe for vectorization will be ignored. This pragma also implies
+``vectorize(enable)``.
 
 Loop Unrolling
 --------------

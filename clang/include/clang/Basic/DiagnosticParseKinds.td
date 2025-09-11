@@ -1727,7 +1727,7 @@ def err_pragma_loop_missing_argument : Error<
 def err_pragma_loop_invalid_option : Error<
   "%select{invalid|missing}0 option%select{ %1|}0; expected vectorize, "
   "vectorize_width, interleave, interleave_count, unroll, unroll_count, "
-  "pipeline, pipeline_initiation_interval, vectorize_predicate, or distribute">;
+  "pipeline, pipeline_initiation_interval, vectorize_predicate, ivdep, or distribute">;
 def err_pragma_loop_invalid_vectorize_option : Error<
   "vectorize_width loop hint malformed; use vectorize_width(X, fixed) or "
   "vectorize_width(X, scalable) where X is an integer, or vectorize_width('fixed' or 'scalable')">;
@@ -1750,6 +1750,8 @@ def err_pragma_invalid_keyword : Error<
   "invalid argument; expected 'enable'%select{|, 'full'}0%select{|, 'assume_safety'}1 or 'disable'">;
 def err_pragma_pipeline_invalid_keyword : Error<
     "invalid argument; expected 'disable'">;
+def err_pragma_ivdep_invalid_keyword : Error<
+    "invalid argument; expected 'enable'">;
 
 // API notes.
 def err_type_unparsed : Error<"unparsed tokens following type">;
