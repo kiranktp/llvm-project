@@ -7548,6 +7548,22 @@ vectorization:
    !0 = !{!"llvm.loop.vectorize.predicate.enable", i1 0}
    !1 = !{!"llvm.loop.vectorize.predicate.enable", i1 1}
 
+'``llvm.loop.vectorize.ivdep.enable``' Metadata
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This metadata indicates to the vectorizer to ignore dependencies between
+memory accesses which have not been determined to be either safe or unsafe
+for vectorization. This differs from ``llvm.loop.parallel_access``, which
+considers no dependencies to be present between memory accesses belonging
+to the same access group. The first operand is the string
+``llvm.loop.vectorize.ivdep.enable`` and the second operand is a bit. A
+value of 1 implies that the functionality of this metadata is enabled for
+the loop.
+
+.. code-block:: llvm
+
+   !0 = !{!"llvm.loop.vectorize.ivdep.enable", i1 1}
+
 '``llvm.loop.vectorize.scalable.enable``' Metadata
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
