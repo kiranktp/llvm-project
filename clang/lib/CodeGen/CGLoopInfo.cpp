@@ -238,6 +238,16 @@ LoopInfo::createLoopVectorizeMetadata(const LoopAttributes &Attrs,
     Args.push_back(MDNode::get(Ctx, Vals));
   }
 
+  // Setting vectorize.ivdep.enable
+  if (Attrs.IvdepEnable == true &&
+      Attrs.VectorizeEnable != LoopAttributes::Disable) {
+    Metadata *Vals[] = {
+        MDString::get(Ctx,"llvm.loop.vectorize.ivdep.enable"),
+        ConstantAsMetadata::get(ConstantInt::get(llvm::Type::getInt1Ty(Ctx),
+                                                 true))};
+    Args.push_back(MDNode::get(Ctx,Vals));
+  }
+
   // Setting vectorize.width
   if (Attrs.VectorizeWidth > 0) {
     Metadata *Vals[] = {
@@ -448,7 +458,8 @@ LoopAttributes::LoopAttributes(bool IsParallel)
       VectorizeScalable(LoopAttributes::Unspecified), InterleaveCount(0),
       UnrollCount(0), UnrollAndJamCount(0),
       DistributeEnable(LoopAttributes::Unspecified), PipelineDisabled(false),
-      PipelineInitiationInterval(0), CodeAlign(0), MustProgress(false) {}
+      PipelineInitiationInterval(0), CodeAlign(0), MustProgress(false),
+      IvdepEnable(false) {}
 
 void LoopAttributes::clear() {
   IsParallel = false;
@@ -465,6 +476,7 @@ void LoopAttributes::clear() {
   PipelineDisabled = false;
   PipelineInitiationInterval = 0;
   CodeAlign = 0;
+  IvdepEnable = false;
   MustProgress = false;
 }
 
@@ -490,7 +502,8 @@ LoopInfo::LoopInfo(BasicBlock *Header, const LoopAttributes &Attrs,
       Attrs.UnrollEnable == LoopAttributes::Unspecified &&
       Attrs.UnrollAndJamEnable == LoopAttributes::Unspecified &&
       Attrs.DistributeEnable == LoopAttributes::Unspecified &&
-      Attrs.CodeAlign == 0 && !StartLoc && !EndLoc && !Attrs.MustProgress)
+      Attrs.CodeAlign == 0 && !StartLoc && !EndLoc && !Attrs.MustProgress &&
+      !Attrs.IvdepEnable)
     return;
 
   TempLoopID = MDNode::getTemporary(Header->getContext(), {});
@@ -522,6 +535,7 @@ void LoopInfo::finish() {
     BeforeJam.VectorizeEnable = Attrs.VectorizeEnable;
     BeforeJam.DistributeEnable = Attrs.DistributeEnable;
     BeforeJam.VectorizePredicateEnable = Attrs.VectorizePredicateEnable;
+    BeforeJam.IvdepEnable = Attrs.IvdepEnable;
 
     switch (Attrs.UnrollEnable) {
     case LoopAttributes::Unspecified:
@@ -541,6 +555,7 @@ void LoopInfo::finish() {
     AfterJam.UnrollCount = Attrs.UnrollCount;
     AfterJam.PipelineDisabled = Attrs.PipelineDisabled;
     AfterJam.PipelineInitiationInterval = Attrs.PipelineInitiationInterval;
+    AfterJam.IvdepEnable = Attrs.IvdepEnable;
 
     // If this loop is subject of an unroll-and-jam by the parent loop, and has
     // an unroll-and-jam annotation itself, we have to decide whether to first
@@ -682,6 +697,8 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
       case LoopHintAttr::VectorizeWidth:
       case LoopHintAttr::InterleaveCount:
       case LoopHintAttr::PipelineInitiationInterval:
+
+      case LoopHintAttr::Ivdep:
         llvm_unreachable("Options cannot be disabled.");
         break;
       }
@@ -703,6 +720,10 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
         break;
       case LoopHintAttr::Distribute:
         setDistributeState(true);
+        break;
+      case LoopHintAttr::Ivdep:
+        setIvdepEnable(true);
+        setVectorizeEnable(true);
         break;
       case LoopHintAttr::UnrollCount:
       case LoopHintAttr::UnrollAndJamCount:
@@ -753,6 +774,7 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
       case LoopHintAttr::Distribute:
       case LoopHintAttr::PipelineDisabled:
       case LoopHintAttr::PipelineInitiationInterval:
+      case LoopHintAttr::Ivdep:
       case LoopHintAttr::VectorizePredicate:
         llvm_unreachable("Options cannot be used with 'full' hint.");
         break;
@@ -795,6 +817,7 @@ void LoopInfoStack::push(BasicBlock *Header, clang::ASTContext &Ctx,
       case LoopHintAttr::Interleave:
       case LoopHintAttr::Distribute:
       case LoopHintAttr::PipelineDisabled:
+      case LoopHintAttr::Ivdep:
         llvm_unreachable("Options cannot be assigned a value.");
         break;
       }

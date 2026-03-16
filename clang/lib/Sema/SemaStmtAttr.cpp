@@ -143,6 +143,7 @@ static Attr *handleLoopHintAttr(Sema &S, Stmt *St, const ParsedAttr &A,
                  .Case("pipeline_initiation_interval",
                        LoopHintAttr::PipelineInitiationInterval)
                  .Case("distribute", LoopHintAttr::Distribute)
+                 .Case("ivdep", LoopHintAttr::Ivdep)
                  .Default(LoopHintAttr::Vectorize);
     if (Option == LoopHintAttr::VectorizeWidth) {
       assert((ValueExpr || (StateLoc && StateLoc->getIdentifierInfo())) &&
@@ -166,6 +167,7 @@ static Attr *handleLoopHintAttr(Sema &S, Stmt *St, const ParsedAttr &A,
     } else if (Option == LoopHintAttr::Vectorize ||
                Option == LoopHintAttr::Interleave ||
                Option == LoopHintAttr::VectorizePredicate ||
+               Option == LoopHintAttr::Ivdep ||
                Option == LoopHintAttr::Unroll ||
                Option == LoopHintAttr::Distribute ||
                Option == LoopHintAttr::PipelineDisabled) {
@@ -474,6 +476,8 @@ CheckForIncompatibleAttributes(Sema &S,
     // The vector predication only has a state form that is exposed by
     // #pragma clang loop vectorize_predicate (enable | disable).
     VectorizePredicate,
+    // #pragma clang loop ivdep(enable)
+    Ivdep,
     // This serves as a indicator to how many category are listed in this enum.
     NumberOfCategories
   };
@@ -518,6 +522,9 @@ CheckForIncompatibleAttributes(Sema &S,
     case LoopHintAttr::PipelineInitiationInterval:
       Category = Pipeline;
       break;
+    case LoopHintAttr::Ivdep:
+      Category = Ivdep;
+      break;
     case LoopHintAttr::VectorizePredicate:
       Category = VectorizePredicate;
       break;
@@ -531,6 +538,7 @@ CheckForIncompatibleAttributes(Sema &S,
         Option == LoopHintAttr::UnrollAndJam ||
         Option == LoopHintAttr::VectorizePredicate ||
         Option == LoopHintAttr::PipelineDisabled ||
+        Option == LoopHintAttr::Ivdep ||
         Option == LoopHintAttr::Distribute) {
       // Enable|Disable|AssumeSafety hint.  For example, vectorize(enable).
       PrevAttr = CategoryState.StateAttr;

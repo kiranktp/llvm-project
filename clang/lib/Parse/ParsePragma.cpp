@@ -1441,22 +1441,26 @@ bool Parser::HandlePragmaLoopHint(LoopHint &Hint) {
   bool OptionDistribute = false;
   bool OptionPipelineDisabled = false;
   bool StateOption = false;
+  bool OptionIvdepEnabled = false;
   if (OptionInfo) { // Pragma Unroll does not specify an option.
     OptionUnroll = OptionInfo->isStr("unroll");
     OptionUnrollAndJam = OptionInfo->isStr("unroll_and_jam");
     OptionDistribute = OptionInfo->isStr("distribute");
     OptionPipelineDisabled = OptionInfo->isStr("pipeline");
+    OptionIvdepEnabled = OptionInfo->isStr("ivdep");
     StateOption = llvm::StringSwitch<bool>(OptionInfo->getName())
                       .Case("vectorize", true)
                       .Case("interleave", true)
                       .Case("vectorize_predicate", true)
+                      .Case("ivdep", true)
                       .Default(false) ||
                   OptionUnroll || OptionUnrollAndJam || OptionDistribute ||
                   OptionPipelineDisabled;
   }
 
   bool AssumeSafetyArg = !OptionUnroll && !OptionUnrollAndJam &&
-                         !OptionDistribute && !OptionPipelineDisabled;
+                         !OptionDistribute && !OptionPipelineDisabled &&
+                         !OptionIvdepEnabled;
   // Verify loop hint has an argument.
   if (Toks[0].is(tok::eof)) {
     ConsumeAnnotationToken();
@@ -1475,7 +1479,7 @@ bool Parser::HandlePragmaLoopHint(LoopHint &Hint) {
 
     bool Valid = StateInfo &&
                  llvm::StringSwitch<bool>(StateInfo->getName())
-                     .Case("disable", true)
+                     .Case("disable", !OptionIvdepEnabled)
                      .Case("enable", !OptionPipelineDisabled)
                      .Case("full", OptionUnroll || OptionUnrollAndJam)
                      .Case("assume_safety", AssumeSafetyArg)
@@ -1483,6 +1487,8 @@ bool Parser::HandlePragmaLoopHint(LoopHint &Hint) {
     if (!Valid) {
       if (OptionPipelineDisabled) {
         Diag(Toks[0].getLocation(), diag::err_pragma_pipeline_invalid_keyword);
+      } else if (OptionIvdepEnabled) {
+        Diag(Toks[0].getLocation(), diag::err_pragma_ivdep_invalid_keyword);
       } else {
         Diag(Toks[0].getLocation(), diag::err_pragma_invalid_keyword)
             << /*FullKeyword=*/(OptionUnroll || OptionUnrollAndJam)
@@ -3572,6 +3578,7 @@ static bool ParseLoopHintValue(Preprocessor &PP, Token &Tok, Token PragmaName,
 ///    'interleave' '(' loop-hint-keyword ')'
 ///    'unroll' '(' unroll-hint-keyword ')'
 ///    'vectorize_predicate' '(' loop-hint-keyword ')'
+///    'ivdep' '(' enable ')'
 ///    'vectorize_width' '(' loop-hint-value ')'
 ///    'interleave_count' '(' loop-hint-value ')'
 ///    'unroll_count' '(' loop-hint-value ')'
@@ -3639,6 +3646,7 @@ void PragmaLoopHintHandler::HandlePragma(Preprocessor &PP,
                            .Case("unroll_count", true)
                            .Case("pipeline", true)
                            .Case("pipeline_initiation_interval", true)
+                           .Case("ivdep", true)
                            .Default(false);
     if (!OptionValid) {
       PP.Diag(Tok.getLocation(), diag::err_pragma_loop_invalid_option)

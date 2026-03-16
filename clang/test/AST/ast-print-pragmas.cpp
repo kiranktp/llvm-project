@@ -48,11 +48,13 @@ void test(int *List, int Length) {
 // CHECK-NEXT: #pragma clang loop vectorize(enable)
 // CHECK-NEXT: #pragma clang loop interleave(disable)
 // CHECK-NEXT: #pragma clang loop vectorize_predicate(disable)
+// CHECK-NEXT: #pragma clang loop ivdep(enable)
 
 #pragma clang loop distribute(disable)
 #pragma clang loop vectorize(enable)
 #pragma clang loop interleave(disable)
 #pragma clang loop vectorize_predicate(disable)
+#pragma clang loop ivdep(enable)
 // CHECK-NEXT: while (i - 1 < Length)
   while (i - 1 < Length) {
     List[i] = i * 2;
